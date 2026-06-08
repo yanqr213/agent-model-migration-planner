@@ -1,0 +1,8 @@
+{
+  "results": [
+    {"id": "tool_schema_ok", "score": 0.95, "passed": true, "latency_ms": 1200, "cost_usd": 0.08, "input_tokens": 1200, "output_tokens": 300},
+    {"id": "json_output_ok", "score": 0.92, "passed": true, "latency_ms": 900, "cost_usd": 0.05, "input_tokens": 900, "output_tokens": 200},
+    {"id": "long_context_ok", "score": 0.88, "passed": true, "latency_ms": 1500, "cost_usd": 0.12, "input_tokens": 5000, "output_tokens": 500},
+    {"id": "rollback_ok", "score": 0.90, "passed": true, "latency_ms": 1000, "cost_usd": 0.06, "input_tokens": 1000, "output_tokens": 250}
+  ]
+}

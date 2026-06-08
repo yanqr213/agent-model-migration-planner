@@ -1,0 +1,4 @@
+model,provider,context_window,input_cost_per_1m,output_cost_per_1m
+gpt-4o,openai,128000,5.00,15.00
+gpt-4.1,openai,1000000,2.00,8.00
+claude-4-sonnet,anthropic,200000,3.00,15.00

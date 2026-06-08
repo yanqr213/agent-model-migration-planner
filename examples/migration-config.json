@@ -1,0 +1,27 @@
+{
+  "project": "codex-agent-router",
+  "source_model": "gpt-4o",
+  "target_model": "gpt-4.1",
+  "prompts": [
+    "prompts"
+  ],
+  "evals": {
+    "baseline": "evals/baseline.json",
+    "candidate": "evals/candidate.json",
+    "score_key": "score",
+    "pass_threshold_delta": -0.03,
+    "max_regression_rate": 0.2,
+    "latency_key": "latency_ms",
+    "max_latency_delta_pct": 0.4
+  },
+  "budget": {
+    "monthly_input_tokens": 120000000,
+    "monthly_output_tokens": 35000000,
+    "max_monthly_cost_increase_pct": 0.15
+  },
+  "price_table": "prices.csv",
+  "output_dir": "../outputs/example-report",
+  "risk_threshold": 75,
+  "fail_on_risk": true,
+  "fail_on_eval_regression": true
+}

@@ -1,0 +1,3 @@
+当用户要求修改代码时，必须先检查上下文。
+<tool name="read_file">读取文件</tool>
+输出 JSON，包含 summary 和 risks。
