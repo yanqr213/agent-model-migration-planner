@@ -38,6 +38,7 @@ class PlannerConfig:
     risk_threshold: int = 70
     fail_on_risk: bool = True
     fail_on_eval_regression: bool = True
+    config_path: Optional[Path] = None
     raw: Optional[Mapping[str, Any]] = None
 
 
@@ -126,6 +127,7 @@ def load_config(path: str) -> PlannerConfig:
         risk_threshold=risk_threshold,
         fail_on_risk=bool(raw.get("fail_on_risk", True)),
         fail_on_eval_regression=bool(raw.get("fail_on_eval_regression", True)),
+        config_path=config_path,
         raw=raw,
     )
     validate_config(config)
@@ -177,4 +179,5 @@ def config_to_dict(config: PlannerConfig) -> Dict[str, Any]:
         "risk_threshold": config.risk_threshold,
         "fail_on_risk": config.fail_on_risk,
         "fail_on_eval_regression": config.fail_on_eval_regression,
+        "config_path": str(config.config_path) if config.config_path else None,
     }

@@ -24,3 +24,7 @@ jobs:
         run: python -m agent_model_migration_planner validate -c examples/migration-config.json
       - name: Generate example report
         run: python -m agent_model_migration_planner plan -c examples/migration-config.json --no-ci-fail --print-summary
+      - name: Generate SARIF report
+        run: python -m agent_model_migration_planner plan -c examples/migration-config.json --format sarif --no-ci-fail --print-summary
+      - name: Generate PR comment report
+        run: python -m agent_model_migration_planner plan -c examples/migration-config.json --format pr-comment --no-ci-fail --print-summary

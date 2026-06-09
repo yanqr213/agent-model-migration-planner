@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-model-migration-planner"
-version = "0.1.0"
+version = "0.2.0"
 description = "Plan AI agent model migrations from prompts, configs, evals, and budget data."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -31,6 +31,12 @@ dependencies = []
 [project.scripts]
 agent-model-migration-planner = "agent_model_migration_planner.cli:main"
 amm-plan = "agent_model_migration_planner.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yanqr213/agent-model-migration-planner"
+Repository = "https://github.com/yanqr213/agent-model-migration-planner"
+Issues = "https://github.com/yanqr213/agent-model-migration-planner/issues"
+Changelog = "https://github.com/yanqr213/agent-model-migration-planner/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["agent_model_migration_planner*"]

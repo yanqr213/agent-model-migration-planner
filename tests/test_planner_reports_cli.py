@@ -7,7 +7,13 @@ from agent_model_migration_planner.ci import EXIT_BLOCKED, EXIT_OK, ci_exit_code
 from agent_model_migration_planner.cli import main
 from agent_model_migration_planner.config import load_config
 from agent_model_migration_planner.planner import plan_migration
-from agent_model_migration_planner.reports import render_markdown_report, write_json_report, write_markdown_report
+from agent_model_migration_planner.reports import (
+    render_markdown_report,
+    render_pr_comment_report,
+    render_sarif_report,
+    write_json_report,
+    write_markdown_report,
+)
 from tests.helpers import TempProjectTestCase
 
 
@@ -54,6 +60,34 @@ class PlannerReportCliTests(TempProjectTestCase):
         self.assertIn("## 迁移步骤", text)
         self.assertIn("## CI 判定", text)
 
+    def test_render_pr_comment_has_stable_marker(self):
+        plan = plan_migration(load_config(str(self.write_basic_project())))
+        text = render_pr_comment_report(plan)
+        self.assertIn("<!-- agent-model-migration-planner -->", text)
+        self.assertIn("model migration gate", text)
+        self.assertIn("| Signal | Value |", text)
+        self.assertIn("Prompt Rewrite Checklist", text)
+
+    def test_render_sarif_includes_prompt_locations(self):
+        plan = plan_migration(load_config(str(self.write_basic_project())))
+        payload = json.loads(render_sarif_report(plan))
+        run = payload["runs"][0]
+        self.assertEqual(payload["version"], "2.1.0")
+        self.assertEqual(run["tool"]["driver"]["name"], "agent-model-migration-planner")
+        rule_ids = {rule["id"] for rule in run["tool"]["driver"]["rules"]}
+        self.assertIn("P001", rule_ids)
+        result = next(item for item in run["results"] if item["ruleId"] == "P001")
+        location = result["locations"][0]["physicalLocation"]
+        self.assertEqual(location["artifactLocation"]["uri"], "prompts/system.md")
+        self.assertEqual(location["region"]["startLine"], 1)
+
+    def test_render_sarif_includes_eval_risks(self):
+        path = self.write_basic_project(candidate={"results": [{"id": "a", "score": 0.9, "passed": True}]})
+        plan = plan_migration(load_config(str(path)))
+        payload = json.loads(render_sarif_report(plan))
+        rule_ids = {item["ruleId"] for item in payload["runs"][0]["results"]}
+        self.assertIn("MIGRATION_EVAL_COVERAGE", rule_ids)
+
     def test_write_json_report(self):
         plan = plan_migration(load_config(str(self.write_basic_project())))
         path = write_json_report(plan)
@@ -99,6 +133,18 @@ class PlannerReportCliTests(TempProjectTestCase):
         code = main(["plan", "-c", str(path), "--format", "json", "--no-ci-fail"])
         self.assertEqual(code, 0)
         self.assertTrue((self.root / "out" / "migration-report.json").exists())
+
+    def test_cli_plan_sarif_only(self):
+        path = self.write_basic_project()
+        code = main(["plan", "-c", str(path), "--format", "sarif", "--no-ci-fail"])
+        self.assertEqual(code, 0)
+        self.assertTrue((self.root / "out" / "migration-report.sarif").exists())
+
+    def test_cli_plan_pr_comment_only(self):
+        path = self.write_basic_project()
+        code = main(["plan", "-c", str(path), "--format", "pr-comment", "--no-ci-fail"])
+        self.assertEqual(code, 0)
+        self.assertTrue((self.root / "out" / "migration-pr-comment.md").exists())
 
     def test_cli_plan_output_dir_override(self):
         path = self.write_basic_project()

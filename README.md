@@ -10,7 +10,7 @@
 - 对比 baseline 与 candidate eval，发现质量退化、缺失用例、延迟或成本变化。
 - 用内置或自定义模型能力/价格表评估上下文窗口、工具调用、JSON mode、视觉、并行工具调用等兼容性。
 - 在 CI 中根据综合风险、阻塞项、eval 回归阈值返回非零退出码。
-- 生成 Markdown 报告给研发、产品、SRE、成本 owner 共同评审，同时生成 JSON 供自动化系统消费。
+- 生成 Markdown 报告给研发、产品、SRE、成本 owner 共同评审，同时生成 JSON、SARIF、PR comment 供自动化系统消费。
 
 ## 安装
 
@@ -55,6 +55,20 @@ python -m agent_model_migration_planner plan \
 ```bash
 python -m agent_model_migration_planner plan \
   -c examples/migration-config.json \
+  --no-ci-fail
+```
+
+生成 GitHub Code Scanning / PR 评论报告：
+
+```bash
+python -m agent_model_migration_planner plan \
+  -c examples/migration-config.json \
+  --format sarif \
+  --no-ci-fail
+
+python -m agent_model_migration_planner plan \
+  -c examples/migration-config.json \
+  --format pr-comment \
   --no-ci-fail
 ```
 
@@ -166,12 +180,14 @@ gpt-4.1,openai,1000000,2.00,8.00
 
 ## 报告说明
 
-默认输出：
+默认输出到配置里的 `output_dir`。如果未配置，使用 `migration-report/`。示例配置会写到 `outputs/example-report/`。
 
 - `migration-report.md`: 面向人工评审的 Markdown 报告。
 - `migration-report.json`: 面向自动化系统的结构化报告。
+- `migration-report.sarif`: 面向 GitHub Code Scanning / 安全质量平台的 SARIF 2.1.0 报告。
+- `migration-pr-comment.md`: 面向 PR 评论或 GitHub Actions step summary 的精简门禁摘要。
 
-报告包含摘要、模型能力与预算、eval 对比、风险清单、prompt 改造清单、迁移步骤、灰度计划、回滚检查和 CI 判定。
+报告包含摘要、模型能力与预算、eval 对比、风险清单、prompt 改造清单、迁移步骤、灰度计划、回滚检查和 CI 判定。SARIF 会把 prompt finding 定位到具体文件和行号；eval 覆盖、质量、预算、延迟和模型能力风险会定位到 candidate eval 或迁移配置文件。
 
 ## CI 集成
 
@@ -183,6 +199,27 @@ GitHub Actions 示例已包含在 `.github/workflows/ci.yml`。在你的项目�
 ```
 
 当 `risk_threshold` 被触发、存在阻塞项，或 eval 回归超过配置阈值时，命令默认返回 `2`，从而阻止合并或发布。审计阶段可加 `--no-ci-fail` 只生成报告。
+
+上传 SARIF 到 GitHub Code Scanning：
+
+```yaml
+- name: Build migration SARIF
+  run: python -m agent_model_migration_planner plan -c migration-config.json -o migration-report --format sarif --no-ci-fail
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: migration-report/migration-report.sarif
+```
+
+写入 GitHub Actions step summary：
+
+```yaml
+- name: Build migration PR summary
+  run: |
+    python -m agent_model_migration_planner plan -c migration-config.json -o migration-report --format pr-comment --no-ci-fail
+    cat migration-report/migration-pr-comment.md >> "$GITHUB_STEP_SUMMARY"
+```
+
+如果要让迁移门禁阻断合并，同时也保留可读摘要，可以分两步：第一步 `--format both` 不加 `--no-ci-fail`，第二步用 `if: always()` 生成 `pr-comment` 摘要。
 
 ## 限制
 
@@ -221,14 +258,14 @@ python -m agent_model_migration_planner plan -c examples/migration-config.json -
 
 `agent-model-migration-planner` is an open-source Python tool for planning AI agent model migrations. It helps teams that use Codex, Claude Code, custom agents, or multi-model routing across OpenAI, Anthropic, Gemini, and internal models.
 
-The tool reads prompts, migration config, eval baseline/candidate results, and price tables. It produces compatibility risks, prompt rewrite tasks, tool-calling differences, budget impact, eval coverage gaps, rollout steps, rollback checks, Markdown/JSON reports, and CI exit codes.
+The tool reads prompts, migration config, eval baseline/candidate results, and price tables. It produces compatibility risks, prompt rewrite tasks, tool-calling differences, budget impact, eval coverage gaps, rollout steps, rollback checks, Markdown/JSON/SARIF/PR-comment reports, and CI exit codes.
 
 ### Use Cases
 
 - Check whether prompts are tied to an old model, old function-calling syntax, vendor-specific behavior, or underspecified structured output.
 - Compare eval baseline and candidate results to catch score regressions, missing cases, latency increases, and cost changes.
 - Compare source and target model capabilities such as context window, tools, JSON mode, vision, parallel tool calls, system prompts, and reasoning controls.
-- Block unsafe migrations in CI while keeping a reviewable Markdown report and a machine-readable JSON report.
+- Block unsafe migrations in CI while keeping reviewable Markdown, machine-readable JSON, GitHub Code Scanning SARIF, and PR-comment summaries.
 
 ### Installation
 
@@ -267,6 +304,13 @@ Generate reports without failing CI:
 
 ```bash
 python -m agent_model_migration_planner plan -c examples/migration-config.json --no-ci-fail
+```
+
+Generate CI-native outputs:
+
+```bash
+python -m agent_model_migration_planner plan -c examples/migration-config.json --format sarif --no-ci-fail
+python -m agent_model_migration_planner plan -c examples/migration-config.json --format pr-comment --no-ci-fail
 ```
 
 Print the built-in model catalog:
@@ -324,12 +368,14 @@ The planner checks model capability changes, context-window risk, prompt migrati
 
 ### Reports
 
-The planner writes:
+The planner writes reports to `output_dir`; if it is not configured, it uses `migration-report/`.
 
 - `migration-report.md`: a human-readable review document.
 - `migration-report.json`: a machine-readable report.
+- `migration-report.sarif`: a SARIF 2.1.0 report for GitHub Code Scanning.
+- `migration-pr-comment.md`: a concise migration gate summary for pull requests or GitHub Actions step summaries.
 
-Reports include summary, model capability comparison, budget impact, eval comparison, risk list, prompt rewrite checklist, migration steps, rollout plan, rollback checks, and CI gate settings.
+Reports include summary, model capability comparison, budget impact, eval comparison, risk list, prompt rewrite checklist, migration steps, rollout plan, rollback checks, and CI gate settings. SARIF output points prompt findings at exact files and lines.
 
 ### CI Integration
 
@@ -341,6 +387,8 @@ This repository includes `.github/workflows/ci.yml`. A minimal job step is:
 ```
 
 Use `--no-ci-fail` during audit-only runs.
+
+Use `--format sarif` with `github/codeql-action/upload-sarif@v3` to surface migration risks in Code Scanning. Use `--format pr-comment` when you want a concise PR comment or `$GITHUB_STEP_SUMMARY` artifact. Pass `-o migration-report` in CI when you want stable artifact paths regardless of the config file's `output_dir`.
 
 ### Limitations
 

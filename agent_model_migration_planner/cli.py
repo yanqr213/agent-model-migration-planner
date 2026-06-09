@@ -9,7 +9,7 @@ from .config import load_config
 from .exceptions import ConfigError, InputDataError
 from .models import DEFAULT_MODEL_CATALOG
 from .planner import plan_migration
-from .reports import write_json_report, write_markdown_report
+from .reports import write_json_report, write_markdown_report, write_pr_comment_report, write_sarif_report
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -22,7 +22,12 @@ def _build_parser() -> argparse.ArgumentParser:
     plan = sub.add_parser("plan", help="生成迁移报告")
     plan.add_argument("-c", "--config", required=True, help="迁移配置 JSON")
     plan.add_argument("-o", "--output-dir", help="覆盖配置中的输出目录")
-    plan.add_argument("--format", choices=("markdown", "json", "both"), default="both", help="输出格式")
+    plan.add_argument(
+        "--format",
+        choices=("markdown", "json", "both", "sarif", "pr-comment"),
+        default="both",
+        help="输出格式",
+    )
     plan.add_argument("--no-ci-fail", action="store_true", help="始终返回 0，仅生成报告")
     plan.add_argument("--print-summary", action="store_true", help="在 stdout 打印简短摘要")
 
@@ -56,6 +61,10 @@ def _run_plan(args: argparse.Namespace) -> int:
         written.append(write_json_report(plan))
     if args.format in ("markdown", "both"):
         written.append(write_markdown_report(plan))
+    if args.format == "sarif":
+        written.append(write_sarif_report(plan))
+    if args.format == "pr-comment":
+        written.append(write_pr_comment_report(plan))
     if args.print_summary:
         _print_summary(plan)
         for path in written:
